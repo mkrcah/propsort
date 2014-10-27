@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/mkrcah/propsort.svg?branch=master)](https://travis-ci.org/mkrcah/propsort)
+
 propsort
 =====
 
