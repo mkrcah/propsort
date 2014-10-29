@@ -71,19 +71,48 @@ def to_logical_lines(natural_lines):
     return lines
 
 
-# todo: detect missing/duplicated files
+SortedResult = namedtuple('Result', ['lines', 'missing_keys'])
+
+
 def sort(tmpl_natural_lines, tosrt_natural_lines):
     tmpl_logic_lines = to_logical_lines(tmpl_natural_lines)
     tosrt_logic_lines = to_logical_lines(tosrt_natural_lines)
 
+    res = SortedResult([], [])
     for (key, value, natural_lines) in tmpl_logic_lines:
         if key is None:
-            yield natural_lines[0]
+            res.lines.append(natural_lines[0])
         else:
-            matched_line = filter(lambda x: x.key == key, tosrt_logic_lines)[0]
-            yield natural_lines[0][:-len(value)] + matched_line.value
-            for l in matched_line.natural_lines[1:]:
-                yield l
+            matched_logic_lines = filter(lambda x: x.key == key, tosrt_logic_lines)
+            if len(matched_logic_lines) == 1:
+                matched = matched_logic_lines[0]
+                res.lines.append(natural_lines[0][:-len(value)] + matched.value)
+                res.lines.extend(matched.natural_lines[1:])
+            elif len(matched_logic_lines) == 0:
+                res.missing_keys.append(key)
+            else:
+                # todo: add duplicated keys
+                assert False, "Duplicated line"
+
+
+    return res
+
+
+def format_result(sorted):
+    out = []
+    for l in sorted.lines:
+        out.append(l)
+
+    if sorted.missing_keys:
+        out.append("")
+        out.append("")
+        out.append("##############################################")
+        out.append("## Missing keys")
+        out.append("##############################################")
+        for k in sorted.missing_keys:
+            out.append("# " + k)
+
+    return out
 
 
 @click.command()
@@ -93,5 +122,11 @@ def cli(template, file_to_sort):
     """Sort the Properties file according to a given template."""
     tmpl_natural_lines = natural_lines_for(template)
     tosrt_natural_lines = natural_lines_for(file_to_sort)
-    for l in sort(tmpl_natural_lines, tosrt_natural_lines):
+
+    sorted = sort(tmpl_natural_lines, tosrt_natural_lines)
+
+    for l in format_result(sorted):
         click.echo(l)
+
+
+

@@ -1,9 +1,19 @@
 from propsort.main import *
 
 
+def test_missing_keys():
+    sorted = sort(['k1=v1', 'k2=v2', 'k3=v3'], ['k4:v4-alt', 'k3 = v3-alt'])
+    assert sorted.missing_keys == ['k1', 'k2']
+
+
+def test_missing_keys_on_files():
+    formatted = format_result(sort(nl("missing1_ref"), nl("missing1_tosort")))
+    assert formatted == nl("missing1_res")
+
+
 def test_sort_complete_files():
-    exp = [l for l in sort(nl('sort1_ref'), nl('sort1_tosort'))]
-    assert exp == nl('sort1_res')
+    assert sort(nl("sort1_ref"), nl("sort1_tosort")).lines == nl("sort1_res")
+
 
 
 def test_to_logical_lines():
@@ -113,6 +123,4 @@ def nl(name):
     """Get natural lines for a testing properties file"""
     filename = 'tests/test_files/{}.properties'.format(name)
     return natural_lines_for(filename)
-
-
 
