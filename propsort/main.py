@@ -20,7 +20,7 @@ def is_comment(line):
 
 
 def is_empty(line):
-    return len(line.strip()) == 0 is not None
+    return len(line.strip()) == 0
 
 
 def is_terminated(line):
