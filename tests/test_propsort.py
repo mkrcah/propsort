@@ -1,56 +1,43 @@
-from propsort.main import *
+from propsort.main import to_sorted_output, get_lines_for
+from propsort.parsing import to_logical_lines, _to_key_value, _is_terminated
+from propsort.lline import LLine
 
 
-def test_missing_keys():
-    sorted = sort(['k1=v1', 'k2=v2', 'k3=v3'], ['k4:v4-alt', 'k3 = v3-alt'])
-    assert sorted.missing_keys == ['k1', 'k2']
+## -------------------------------
+## Propsort tests
+## -------------------------------
 
 
 def test_missing_keys_on_files():
-    formatted = format_result(sort(nl("missing1_ref"), nl("missing1_tosort")))
-    assert formatted == nl("missing1_res")
+    assert_files_equal("missing1")
+
+
+def test_duplicated_keys_on_files():
+    assert_files_equal("duplicated1")
 
 
 def test_sort_complete_files():
-    assert sort(nl("sort1_ref"), nl("sort1_tosort")).lines == nl("sort1_res")
+    assert_files_equal("sort1")
 
 
+## -------------------------------
+## Parser tests
+## -------------------------------
 
 def test_to_logical_lines():
-    assert to_logical_lines(nl('to_logical_lines1')) == [
-        LogicalLine(None, None, ['# c1']),
-        LogicalLine('k1', 'v1', ['k1 = v1']),
-        LogicalLine('k2', 'v2', ['k2 : v2']),
-        LogicalLine('k3', 'v3-p1 \\', ['k3   v3-p1 \\', '    v3-p2']),
-        LogicalLine(None, None, ['']),
-        LogicalLine(None, None, [' ! c2']),
-        LogicalLine('k4', '', ['k4']),
+    assert to_logical_lines(get_lines_for(f('to_logical_lines1'))) == [
+        LLine(None, None, ['# c1']),
+        LLine('k1', 'v1', ['k1 = v1']),
+        LLine('k2', 'v2', ['k2 : v2']),
+        LLine('k3', 'v3-p1 \\', ['k3   v3-p1 \\', '    v3-p2']),
+        LLine(None, None, ['']),
+        LLine(None, None, [' ! c2']),
+        LLine('k4', '', ['k4']),
     ]
 
 
-def test_line_starting_with_hash_or_excl_mark_is_comment():
-    assert_function_on_cases(is_comment, {
-        '#': True,
-        '!': True,
-        ' # comment': True,
-        ' ! comment': True,
-        '\t\t#comment': True,
-        '\t\t!comment': True,
-        ' key = value # comment': False,
-        ' key = value ! comment': False,
-    })
-
-
-def test_line_with_whitespaces_only_is_empty():
-    assert_function_on_cases(is_empty, {
-        '': True,
-        ' \t ': True,
-        ' key ': False,
-    })
-
-
 def test_line_ending_with_odd_number_of_backslashes_is_terminated():
-    assert_function_on_cases(is_terminated, {
+    assert_function_on_cases(_is_terminated, {
         ' key = value ':        True,
         ' key = v\\alue':       True,
         ' key = value \\\\':    True,
@@ -61,7 +48,7 @@ def test_line_ending_with_odd_number_of_backslashes_is_terminated():
 
 
 def test_line_without_value_is_parsed_to_key_value_pair():
-    assert_function_on_cases(to_key_value, {
+    assert_function_on_cases(_to_key_value, {
         'key':                 ('key', ''),
         'key ':                ('key', ''),
         'key=':                ('key', ''),
@@ -75,7 +62,7 @@ def test_line_without_value_is_parsed_to_key_value_pair():
 
 
 def test_line_with_key_vlaue_is_parsed_to_key_value_pair():
-    assert_function_on_cases(to_key_value, {
+    assert_function_on_cases(_to_key_value, {
         'key=value':           ('key', 'value'),
         'key= value':          ('key', 'value'),
         '   key   =   value':  ('key', 'value'),
@@ -89,7 +76,7 @@ def test_line_with_key_vlaue_is_parsed_to_key_value_pair():
 
 
 def test_line_with_special_characters_is_parsed_to_key_value_pair():
-    assert_function_on_cases(to_key_value, {
+    assert_function_on_cases(_to_key_value, {
         'key value=':          ('key', 'value='),
         'key\= value=':        ('key\=', 'value='),
         'key\= = value=':      ('key\=', 'value='),
@@ -105,7 +92,7 @@ def test_line_with_special_characters_is_parsed_to_key_value_pair():
 
 
 def test_line_with_wrong_key_value_format_is_not_parsed_to_key_value_pair():
-    assert_function_on_cases(to_key_value, {
+    assert_function_on_cases(_to_key_value, {
         '':    (None, None),
         '   ': (None, None),
         ':':   (None, None),
@@ -114,13 +101,19 @@ def test_line_with_wrong_key_value_format_is_not_parsed_to_key_value_pair():
     })
 
 
+## -------------------------------
+## Utils
+## -------------------------------
+
 def assert_function_on_cases(fn, cases):
     for c in cases:
         assert fn(c) == cases[c], '{0}({1}) returns {2}, expected {3}'.format(fn.__name__, c, fn(c), cases[c])
 
 
-def nl(name):
-    """Get natural lines for a testing properties file"""
-    filename = 'tests/test_files/{}.properties'.format(name)
-    return natural_lines_for(filename)
+def assert_files_equal(testname):
+    to_sorted_output(f(testname+'_ref'), f(testname+'_tosort')) == get_lines_for(f(testname+'_res'))
+
+
+def f(name):
+    return 'tests/test_files/{}.properties'.format(name)
 
